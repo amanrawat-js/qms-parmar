@@ -10,8 +10,11 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Download,
   Layers,
+  Sun,
+  Moon,
+  BookOpen,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +27,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -39,43 +40,33 @@ export default function ImportQuestionsPage() {
   const [parsedData, setParsedData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [isFinalJson, setIsFinalJson] = useState(false);
 
-  // Hierarchy States
+  // Hierarchy States (for legacy format)
   const [exams, setExams] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [shifts, setShifts] = useState([]);
-  const [topics, setTopics] = useState([]);
   const [languagesInFile, setLanguagesInFile] = useState([]);
   const [config, setConfig] = useState({
     exam: "",
-    shift: "",
-    subject: "",
-    topic: "",
     createCollection: false,
     collectionTitle: "",
+  });
+
+  // Summary for final.json
+  const [finalSummary, setFinalSummary] = useState({
+    examNames: [],
+    shiftCount: 0,
+    subjectNames: [],
+    topicNames: [],
   });
 
   useEffect(() => {
     fetch("/api/exams")
       .then((res) => res.json())
       .then((data) => setExams(data.exams || []));
-    fetch("/api/subjects")
-      .then((res) => res.json())
-      .then((data) => setSubjects(data.subjects || []));
   }, []);
 
   const handleHierarchyChange = async (name, value) => {
     setConfig((prev) => ({ ...prev, [name]: value }));
-    if (name === "exam") {
-      const res = await fetch(`/api/shifts?examId=${value}`);
-      const data = await res.json();
-      setShifts(data.shifts || []);
-    }
-    if (name === "subject") {
-      const res = await fetch(`/api/topics?subjectId=${value}`);
-      const data = await res.json();
-      setTopics(data.topics || []);
-    }
   };
 
   // --- FILE PARSERS ---
@@ -99,8 +90,6 @@ export default function ImportQuestionsPage() {
   };
 
   const formatRawToModel = (raw) => {
-    // Basic logic to map table keys to our LanguageContentSchema
-    // Supports 'text', 'option1', 'option2', 'correct'
     return {
       content: {
         en: {
@@ -118,7 +107,6 @@ export default function ImportQuestionsPage() {
     };
   };
 
-  // ... inside your handleFileChange ...
   const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
@@ -131,15 +119,42 @@ export default function ImportQuestionsPage() {
         if (selectedFile.name.endsWith(".json")) {
           const data = JSON.parse(event.target.result);
 
-          // Detect languages in JSON to show in summary
-          const detectedLangs = new Set();
-          data.forEach((q) => {
-            if (q.content)
-              Object.keys(q.content).forEach((l) => detectedLangs.add(l));
-          });
+          // Detect if it's final.json format
+          const isFinal = data[0]?.Question_en !== undefined;
+          setIsFinalJson(isFinal);
+
+          if (isFinal) {
+            // Build summary
+            const examSet = new Set();
+            const subjectSet = new Set();
+            const topicSet = new Set();
+            const shiftSet = new Set();
+
+            data.forEach((q) => {
+              if (q.Name) examSet.add(q.Name);
+              if (q.subject) subjectSet.add(q.subject);
+              if (q.topic) topicSet.add(q.topic);
+              if (q.Time) shiftSet.add(q.Date + " " + q.Time);
+            });
+
+            setFinalSummary({
+              examNames: Array.from(examSet),
+              shiftCount: shiftSet.size,
+              subjectNames: Array.from(subjectSet),
+              topicNames: Array.from(topicSet),
+            });
+            setLanguagesInFile(["en", "hi"]);
+          } else {
+            // Legacy format
+            const detectedLangs = new Set();
+            data.forEach((q) => {
+              if (q.content)
+                Object.keys(q.content).forEach((l) => detectedLangs.add(l));
+            });
+            setLanguagesInFile(Array.from(detectedLangs) || []);
+          }
 
           setParsedData(data);
-          setLanguagesInFile(Array.from(detectedLangs) || []);
         } else {
           await processWordFile(event.target.result);
         }
@@ -159,12 +174,11 @@ export default function ImportQuestionsPage() {
     try {
       const payload = {
         questions: parsedData,
-        hierarchy: {
-          exam: config.exam,
-          shift: config.shift,
-          subject: config.subject,
-          topic: config.topic,
-        },
+        hierarchy: isFinalJson
+          ? {}
+          : {
+              exam: config.exam,
+            },
         collection: config.createCollection
           ? { title: config.collectionTitle }
           : null,
@@ -176,10 +190,17 @@ export default function ImportQuestionsPage() {
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) router.push("/dashboard/questions");
-      toast.success("Questions imported successfully!");
+      const result = await res.json();
+
+      if (res.ok) {
+        toast.success(`${result.count} questions imported successfully!`);
+        router.push("/dashboard/questions");
+      } else {
+        toast.error(result.message || "Import failed");
+      }
     } catch (err) {
       console.error(err);
+      toast.error("Import failed. Check console for details.");
     } finally {
       setImporting(false);
     }
@@ -188,7 +209,6 @@ export default function ImportQuestionsPage() {
   return (
     <div className="w-full mx-auto space-y-6 pb-20">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        {/* Left section */}
         <div className="flex items-center gap-2">
           <Link href="/dashboard/questions">
             <Button variant="outline" size="icon">
@@ -198,7 +218,6 @@ export default function ImportQuestionsPage() {
           <h1 className="text-xl sm:text-2xl font-bold">Import Questions</h1>
         </div>
 
-        {/* Right section */}
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -305,7 +324,7 @@ export default function ImportQuestionsPage() {
                     </div>
                   </div>
 
-                  {/* Status Metric */}
+                  {/* Status */}
                   <div className="hidden sm:block space-y-1">
                     <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                       Status
@@ -319,8 +338,54 @@ export default function ImportQuestionsPage() {
                   </div>
                 </div>
 
-                {/* Warning if no languages are found */}
-                {languagesInFile.length === 0 && (
+                {/* Final.json specific summary */}
+                {isFinalJson && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-border/40">
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider flex items-center gap-1">
+                        <GraduationCap className="h-3 w-3" /> Exams
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {finalSummary.examNames.map((n) => (
+                          <Badge key={n} variant="secondary" className="text-[10px]">
+                            {n}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider flex items-center gap-1">
+                        <Sun className="h-3 w-3" /> Shifts
+                      </p>
+                      <p className="text-lg font-bold">{finalSummary.shiftCount}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider flex items-center gap-1">
+                        <BookOpen className="h-3 w-3" /> Subjects
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {finalSummary.subjectNames.slice(0, 5).map((n) => (
+                          <Badge key={n} variant="secondary" className="text-[10px]">
+                            {n}
+                          </Badge>
+                        ))}
+                        {finalSummary.subjectNames.length > 5 && (
+                          <Badge variant="outline" className="text-[10px]">
+                            +{finalSummary.subjectNames.length - 5}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                        Topics
+                      </p>
+                      <p className="text-lg font-bold">{finalSummary.topicNames.length}</p>
+                    </div>
+                  </div>
+                )}
+
+                {!isFinalJson && languagesInFile.length === 0 && (
                   <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs italic">
                     <AlertCircle className="h-3 w-3" />
                     No valid language content map found. Please check your JSON
@@ -336,93 +401,68 @@ export default function ImportQuestionsPage() {
         <div className="space-y-6">
           <Card>
             <CardContent className="pt-6 space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                Default Hierarchy for Questions
-              </h3>
+              {isFinalJson ? (
+                // --- Final JSON mode: no manual selection needed ---
+                <>
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                    Auto-Detected from JSON
+                  </h3>
+                  <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-4 space-y-2">
+                    <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> All fields auto-resolved
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Exam, Shift (Morning/Evening), Subject, and Topic will be created
+                      or matched automatically based on the JSON data. No manual
+                      selection is needed.
+                    </p>
+                  </div>
+                  <ul className="text-xs text-muted-foreground space-y-1.5 pl-1">
+                    <li className="flex items-center gap-2">
+                      <Sun className="h-3 w-3 text-amber-400" />
+                      Shift set from <strong>Time</strong> field (before 12 PM = Morning)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <GraduationCap className="h-3 w-3 text-blue-400" />
+                      Exam set from <strong>Name</strong> field
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <BookOpen className="h-3 w-3 text-purple-400" />
+                      Subject & Topic set per question
+                    </li>
+                  </ul>
+                </>
+              ) : (
+                // --- Legacy mode: manual hierarchy selection ---
+                <>
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                    Default Hierarchy for Questions
+                  </h3>
 
-              {/* Exam Select */}
-              <div className="space-y-1.5">
-                <Label>Exam<span className="text-xs text-gray-500">(Required for Auto Shift Create)</span></Label>
-                <Select
-                  value={config.exam}
-                  onValueChange={(val) => handleHierarchyChange("exam", val)}
-                >
-                  <SelectTrigger className="w-full bg-background border-input">
-                    <SelectValue placeholder="Select Exam" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Select Exam</SelectItem>
-                    {exams.map((ex) => (
-                      <SelectItem key={ex._id} value={ex._id}>
-                        {ex.examName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Shift Select */}
-              <div className="space-y-1.5">
-                <Label>Shift</Label>
-                <Select
-                  value={config.shift}
-                  onValueChange={(val) => handleHierarchyChange("shift", val)}
-                >
-                  <SelectTrigger className="w-full bg-background border-input">
-                    <SelectValue placeholder="Select Shift" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Select Shift</SelectItem>
-                    {shifts.map((sh) => (
-                      <SelectItem key={sh._id} value={sh._id}>
-                        {sh.shiftName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Subject Select */}
-              <div className="space-y-1.5">
-                <Label>Subject</Label>
-                <Select
-                  value={config.subject}
-                  onValueChange={(val) => handleHierarchyChange("subject", val)}
-                >
-                  <SelectTrigger className="w-full bg-background border-input">
-                    <SelectValue placeholder="Select Subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Select Subject</SelectItem>
-                    {subjects.map((s) => (
-                      <SelectItem key={s._id} value={s._id}>
-                        {s.subjectName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Topic Select */}
-              <div className="space-y-1.5">
-                <Label>Topic</Label>
-                <Select
-                  value={config.topic}
-                  onValueChange={(val) => handleHierarchyChange("topic", val)}
-                >
-                  <SelectTrigger className="w-full bg-background border-input">
-                    <SelectValue placeholder="Select Topic" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Select Topic</SelectItem>
-                    {topics.map((t) => (
-                      <SelectItem key={t._id} value={t._id}>
-                        {t.topicName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {/* Exam Select */}
+                  <div className="space-y-1.5">
+                    <Label>Exam</Label>
+                    <Select
+                      value={config.exam}
+                      onValueChange={(val) =>
+                        handleHierarchyChange("exam", val)
+                      }
+                    >
+                      <SelectTrigger className="w-full bg-background border-input">
+                        <SelectValue placeholder="Select Exam" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Select Exam</SelectItem>
+                        {exams.map((ex) => (
+                          <SelectItem key={ex._id} value={ex._id}>
+                            {ex.examName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
 
               <div className="pt-4 border-t space-y-4">
                 <div className="flex items-center space-x-2">
@@ -467,8 +507,6 @@ export default function ImportQuestionsPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* End of Sidebar */}
       </div>
     </div>
   );

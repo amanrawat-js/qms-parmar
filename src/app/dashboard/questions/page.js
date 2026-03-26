@@ -21,6 +21,8 @@ export default function QuestionsPage() {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [exams, setExams] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   
   // Pagination State
   const [pagination, setPagination] = useState({
@@ -35,6 +37,12 @@ export default function QuestionsPage() {
     subjectId: "",
     lang: "",
   });
+
+  // Fetch exams and subjects for filter dropdowns
+  useEffect(() => {
+    fetch("/api/exams").then(r => r.json()).then(d => setExams(d.exams || []));
+    fetch("/api/subjects").then(r => r.json()).then(d => setSubjects(d.subjects || []));
+  }, []);
 
   // Fetch Questions with Pagination
   const fetchQuestions = useCallback(async () => {
@@ -136,18 +144,24 @@ export default function QuestionsPage() {
 
         <select 
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={filters.examId}
             onChange={(e) => handleFilterChange("examId", e.target.value)}
         >
           <option value="">All Exams</option>
-          {/* Map your exams here */}
+          {exams.map((ex) => (
+            <option key={ex._id} value={ex._id}>{ex.examName}</option>
+          ))}
         </select>
 
         <select 
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={filters.subjectId}
             onChange={(e) => handleFilterChange("subjectId", e.target.value)}
         >
           <option value="">All Subjects</option>
-          {/* Map your subjects here */}
+          {subjects.map((s) => (
+            <option key={s._id} value={s._id}>{s.subjectName}</option>
+          ))}
         </select>
       </div>
 

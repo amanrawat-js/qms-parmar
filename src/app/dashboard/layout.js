@@ -11,7 +11,6 @@ const adminMenu = [
   { title: "Manage Users", icon: "Users", url: "/dashboard/users" },
   { title: "Boards", icon: "Building", url: "/dashboard/boards" },
   { title: "Exams", icon: "GraduationCap", url: "/dashboard/exams"},
-  { title: "Shift", icon: "CalendarClock", url: "/dashboard/shifts"},
   { title: "Subjects", icon: "BookOpen", url: "/dashboard/subjects"},
   { title: "Topics", icon: "BookMarked", url: "/dashboard/topics"},
   { title: "Questions", icon: "HelpCircle", url: "/dashboard/questions" },

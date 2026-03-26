@@ -9,11 +9,12 @@ import {
   Eye, 
   Edit, 
   Clock, 
-  Calendar,
   Filter,
   Loader2, 
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -39,6 +40,7 @@ import { toast } from "sonner";
 
 export default function ExamsPage() {
   const [exams, setExams] = useState([]);
+  const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
@@ -48,22 +50,38 @@ export default function ExamsPage() {
 
   useEffect(() => {
     setMounted(true);
-    fetchExams();
+    fetchData();
   }, []);
 
-  const fetchExams = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/exams");
-      const data = await res.json();
-      setExams(data.exams || []);
+      const [examsRes, shiftsRes] = await Promise.all([
+        fetch("/api/exams"),
+        fetch("/api/shifts"),
+      ]);
+      const examsData = await examsRes.json();
+      const shiftsData = await shiftsRes.json();
+      setExams(examsData.exams || []);
+      setShifts(shiftsData.shifts || []);
     } catch (error) {
-      console.error("Failed to fetch exams");
+      console.error("Failed to fetch data");
       toast.error("Failed to load exams data.");
     } finally {
       setLoading(false);
     }
   };
+
+  // Group shifts by exam ID for fast lookup
+  const shiftsByExam = useMemo(() => {
+    const map = {};
+    shifts.forEach((shift) => {
+      const examId = typeof shift.exam === "object" ? shift.exam._id : shift.exam;
+      if (!map[examId]) map[examId] = [];
+      map[examId].push(shift);
+    });
+    return map;
+  }, [shifts]);
 
   // Search and Filter Logic
   const filteredExams = useMemo(() => {
@@ -82,6 +100,13 @@ export default function ExamsPage() {
     currentPage * itemsPerPage
   );
 
+  const shiftIcon = (name) => {
+    const n = name?.toLowerCase() || "";
+    if (n.includes("morning")) return <Sun className="h-3 w-3 text-amber-500" />;
+    if (n.includes("evening") || n.includes("night")) return <Moon className="h-3 w-3 text-indigo-400" />;
+    return <Clock className="h-3 w-3 text-muted-foreground" />;
+  };
+
   return (
     <div className="p-0 space-y-6 animate-in fade-in duration-500">
       {/* --- HEADER --- */}
@@ -90,7 +115,7 @@ export default function ExamsPage() {
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent uppercase">
             Exams
           </h1>
-          <p className="text-muted-foreground text-sm font-medium">Manage and review all scheduled examinations.</p>
+          <p className="text-muted-foreground text-sm font-medium">Manage examinations and their shifts.</p>
         </div>
         <Link href="/dashboard/exams/create">
           <Button className="shadow-lg transition-transform active:scale-95">
@@ -142,6 +167,7 @@ export default function ExamsPage() {
                 <TableHead className="w-[100px] text-center font-bold text-[10px] uppercase tracking-widest pl-8">Year</TableHead>
                 <TableHead className="font-bold text-[10px] uppercase tracking-widest">Exam Name</TableHead>
                 <TableHead className="font-bold text-[10px] uppercase tracking-widest">Board</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-widest">Shift</TableHead>
                 <TableHead className="font-bold text-[10px] uppercase tracking-widest">Status</TableHead>
                 <TableHead className="text-right font-bold text-[10px] uppercase tracking-widest pr-8">Actions</TableHead>
               </TableRow>
@@ -149,61 +175,82 @@ export default function ExamsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-64 text-center">
+                  <TableCell colSpan={6} className="h-64 text-center">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary/50" />
                   </TableCell>
                 </TableRow>
               ) : paginatedExams.length > 0 ? (
-                paginatedExams.map((exam) => (
-                  <TableRow key={exam._id} className="hover:bg-muted/20 transition-colors group border-b">
-                    <TableCell className="pl-8 text-center font-mono text-xs text-primary font-bold">
-                      {exam.examYear}
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-bold text-sm tracking-tight">{exam.examName}</div>
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-1 uppercase">
-                        <Clock className="h-3 w-3" /> {exam.duration} Min • {exam.totalMarks} Marks
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-[10px] border uppercase tracking-tighter">
-                        {exam.board?.boardShortName || "N/A"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`text-[10px] font-bold uppercase ${
-                        exam.status === 'PUBLISHED' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
-                      }`}>
-                        {exam.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right pr-8">
-                      <div className="flex justify-end gap-2">
-                        <Link href={`/dashboard/exams/${exam._id}`}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><Eye className="h-4 w-4" /></Button>
-                        </Link>
-                        <Link href={`/dashboard/exams/${exam._id}/edit`}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><Edit className="h-4 w-4" /></Button>
-                        </Link>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 shadow-xl">
-                            <DropdownMenuLabel>Extra Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>Manage Questions</DropdownMenuItem>
-                            <DropdownMenuItem>View Stats</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                paginatedExams.map((exam) => {
+                  const examShifts = shiftsByExam[exam._id] || [];
+                  return (
+                    <TableRow key={exam._id} className="hover:bg-muted/20 transition-colors group border-b">
+                      <TableCell className="pl-8 text-center font-mono text-xs text-primary font-bold">
+                        {exam.examYear}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-bold text-sm tracking-tight">{exam.examName}</div>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-1 uppercase">
+                          <Clock className="h-3 w-3" /> {exam.duration} Min • {exam.totalMarks} Marks
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px] border uppercase tracking-tighter">
+                          {exam.board?.boardShortName || "N/A"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {examShifts.length === 0 ? (
+                          <span className="text-[10px] text-muted-foreground italic">No shifts</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {examShifts.map((shift) => (
+                              <Badge
+                                key={shift._id}
+                                variant="secondary"
+                                className="text-[10px] gap-1 font-semibold"
+                              >
+                                {shiftIcon(shift.shiftName)}
+                                {shift.shiftName}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`text-[10px] font-bold uppercase ${
+                          exam.status === 'PUBLISHED' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
+                        }`}>
+                          {exam.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right pr-8">
+                        <div className="flex justify-end gap-2">
+                          <Link href={`/dashboard/exams/${exam._id}`}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><Eye className="h-4 w-4" /></Button>
+                          </Link>
+                          <Link href={`/dashboard/exams/${exam._id}/edit`}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><Edit className="h-4 w-4" /></Button>
+                          </Link>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 shadow-xl">
+                              <DropdownMenuLabel>Extra Actions</DropdownMenuLabel>
+                              <DropdownMenuItem>Manage Questions</DropdownMenuItem>
+                              <DropdownMenuItem>View Stats</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">
+                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">
                     No exams matching your criteria.
                   </TableCell>
                 </TableRow>

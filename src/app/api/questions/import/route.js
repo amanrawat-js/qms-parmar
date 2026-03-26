@@ -7,6 +7,7 @@ import Shift from "@/models/Shift";
 import Topic from "@/models/Topic";
 import Subject from "@/models/Subject";
 import Exam from "@/models/Exam";
+import Board from "@/models/Board";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import slugify from "slugify";
@@ -63,34 +64,71 @@ const normalizeTimeMixed = (v) => {
    Resolvers
 ------------------------------------------------- */
 
-// Exam (optional, strict)
-async function resolveExam(examInput) {
-  console.log("ExamInput 1:", examInput);
+// Board (find-or-create by Section_Name)
+async function resolveBoard(sectionName, userId) {
+  if (!sectionName) return null;
 
+  const key = `board:${normalizeKey(sectionName)}`;
+  return cached(key, async () => {
+    const escaped = escapeRegex(sectionName.trim());
+
+    let board = await Board.findOne({
+      $or: [
+        { boardName: new RegExp(`^${escaped}$`, "i") },
+        { boardShortName: new RegExp(`^${escaped}$`, "i") },
+        { boardSlug: new RegExp(`^${normalizeKey(sectionName)}$`, "i") },
+      ],
+    });
+
+    if (!board) {
+      board = await Board.create({
+        boardName: sectionName.trim(),
+        boardShortName: sectionName.trim().toUpperCase().slice(0, 10),
+        boardSlug: normalizeKey(sectionName),
+        createdBy: userId,
+      });
+    }
+
+    return board._id;
+  });
+}
+
+// Exam (find-or-create by name)
+async function resolveExam(examInput, boardId, userId) {
   if (!examInput || examInput.trim() === "none") return null;
-
-  console.log("ExamInput 2:", examInput);
 
   const key = `exam:${normalizeKey(examInput)}`;
 
   return cached(key, async () => {
+    if (isObjectId(examInput)) {
+      const exam = await Exam.findById(examInput);
+      if (exam) return exam._id;
+    }
+
     const escaped = escapeRegex(examInput.trim());
-    console.log("Escaped", escaped);
-    const exam = isObjectId(examInput)
-      ? await Exam.findById(examInput)
-      : await Exam.findOne({
-          $or: [
-            { name: new RegExp(`^${escaped}$`, "i") },
-            { slug: new RegExp(`^${escaped}$`, "i") },
-          ],
-        });
-    console.log("Exam", exam);
-    if (!exam) throw new Error("Exam not found. Create exam first.");
+    let exam = await Exam.findOne({
+      $or: [
+        { examName: new RegExp(`^${escaped}$`, "i") },
+        { examSlug: new RegExp(`^${normalizeKey(examInput)}$`, "i") },
+      ],
+    });
+
+    if (!exam) {
+      exam = await Exam.create({
+        examName: examInput.trim(),
+        examSlug: normalizeKey(examInput),
+        examYear: new Date().getFullYear(),
+        board: boardId,
+        status: "DRAFT",
+        createdBy: userId,
+      });
+    }
+
     return exam._id;
   });
 }
 
-// Subject (NO DUPLICATES)
+// Subject (NO DUPLICATES — find-or-create)
 async function resolveSubject(subjectInput, userId) {
   if (!subjectInput) return null;
   if (isObjectId(subjectInput)) return subjectInput;
@@ -119,7 +157,7 @@ async function resolveSubject(subjectInput, userId) {
   });
 }
 
-// Topic (subject-scoped, NO DUPLICATES)
+// Topic (subject-scoped, NO DUPLICATES — find-or-create)
 async function resolveTopic(topicInput, subjectId, userId) {
   if (!topicInput || !subjectId) return null;
   if (isObjectId(topicInput)) return topicInput;
@@ -149,7 +187,6 @@ async function resolveTopic(topicInput, subjectId, userId) {
       });
       return topic._id;
     } catch (err) {
-      // 🔥 Handle duplicate key race condition
       if (err.code === 11000) {
         const existing = await Topic.findOne({ topicSlug: slug });
         if (existing) return existing._id;
@@ -159,7 +196,7 @@ async function resolveTopic(topicInput, subjectId, userId) {
   });
 }
 
-// Shift (only if exam exists)
+// Shift (find-or-create by exam + date + startTime)
 async function resolveShift(shiftInput, examId, userId) {
   if (!shiftInput || !examId) return null;
   if (isObjectId(shiftInput)) return shiftInput;
@@ -191,48 +228,33 @@ async function resolveShift(shiftInput, examId, userId) {
   });
 }
 
-//Shift (only if exam exists)
-async function resolveShiftFromQuestion(question, examId, userId) {
+// Resolve shift from a final.json question entry
+async function resolveShiftFromFinalJson(question, examId, userId) {
   if (!examId || !question) return null;
 
-  const examDate = normalizeDate(question["exam-date"]);
-  const { startTime, endTime } = normalizeTimeMixed(question["exam-time"]);
+  const examDate = normalizeDate(question.Date);
+  const { startTime, endTime } = normalizeTimeMixed(question.Time);
 
   if (!examDate || !startTime) return null;
+
+  // Determine Morning/Evening from start time
+  const startHour = parseInt(startTime.split(":")[0], 10);
+  const shiftName = startHour < 12 ? "Morning" : "Evening";
 
   const key = `shift:${examId}:${examDate}:${startTime}`;
 
   return cached(key, async () => {
-    // 1️⃣ Exact match
     let shift = await Shift.findOne({
       exam: examId,
       date: examDate,
       startTime,
-      endTime: endTime || null,
     });
 
     if (shift) return shift._id;
 
-    // 2️⃣ Upgrade existing shift (endTime came later)
-    shift = await Shift.findOne({
-      exam: examId,
-      date: examDate,
-      startTime,
-      endTime: null,
-    });
-
-    if (shift && endTime) {
-      shift.endTime = endTime;
-      await shift.save();
-      return shift._id;
-    }
-
-    // 3️⃣ Create new shift
-    const count = await Shift.countDocuments({ exam: examId, date: examDate });
-
     shift = await Shift.create({
       exam: examId,
-      shiftName: `Shift-${count + 1}`,
+      shiftName,
       date: examDate,
       startTime,
       endTime: endTime || null,
@@ -241,6 +263,44 @@ async function resolveShiftFromQuestion(question, examId, userId) {
 
     return shift._id;
   });
+}
+
+/* -------------------------------------------------
+   Transform final.json entry → Question document
+------------------------------------------------- */
+
+function transformFinalJsonToQuestion(q) {
+  const correctIdx = parseInt(q.correct_option_number, 10) - 1;
+
+  const enOptions = (q.options_en || []).map((text, i) => ({
+    text,
+    correctOption: i === correctIdx,
+  }));
+  const hnOptions = (q.options_hn || []).map((text, i) => ({
+    text,
+    correctOption: i === correctIdx,
+  }));
+
+  return {
+    content: {
+      en: {
+        text: q.Question_en || "",
+        passage: "",
+        solution: "",
+        description: "",
+        options: enOptions,
+      },
+      hi: {
+        text: q.Question_hn || "",
+        passage: "",
+        solution: "",
+        description: "",
+        options: hnOptions,
+      },
+    },
+    code: q.question_id || undefined,
+    availableLanguages: ["en", "hi"],
+  };
 }
 
 /* -------------------------------------------------
@@ -263,23 +323,29 @@ export async function POST(req) {
     await connectDB();
     const userId = session.user.id;
 
-    /* ---------- Resolve hierarchy FIRST ---------- */
+    /* ---------- Detect format ---------- */
+    const isFinalJson = questions[0]?.Question_en !== undefined;
 
-    const hierarchyExamId = await resolveExam(hierarchy.exam);
-    console.log("HierarchyExamId", hierarchyExamId);
-    const hierarchyShiftId = hierarchyExamId
-      ? await resolveShift(hierarchy.shift, hierarchyExamId, userId)
+    /* ---------- Resolve hierarchy ---------- */
+
+    // For final.json, hierarchy comes per-question (Name, Date, Time, subject, topic)
+    // For legacy format, hierarchy comes from the sidebar
+    const hierarchyExamId = !isFinalJson
+      ? await resolveExam(hierarchy.exam, null, userId)
       : null;
-    console.log("HierarchyShiftId", hierarchyShiftId);
-    const hierarchySubjectId = await resolveSubject(hierarchy.subject, userId);
-    console.log("HierarchySubjectId", hierarchySubjectId);
 
-    const hierarchyTopicId = await resolveTopic(
-      hierarchy.topic,
-      hierarchySubjectId,
-      userId
-    );
-    console.log("HierarchyTopicId", hierarchyTopicId);
+    const hierarchyShiftId =
+      !isFinalJson && hierarchyExamId
+        ? await resolveShift(hierarchy.shift, hierarchyExamId, userId)
+        : null;
+
+    const hierarchySubjectId = !isFinalJson
+      ? await resolveSubject(hierarchy.subject, userId)
+      : null;
+
+    const hierarchyTopicId = !isFinalJson
+      ? await resolveTopic(hierarchy.topic, hierarchySubjectId, userId)
+      : null;
 
     /* ---------- Questions ---------- */
 
@@ -288,78 +354,80 @@ export async function POST(req) {
     for (const q of questions) {
       console.log("Question Number", qNo++);
 
-      const subjectId =
-        hierarchySubjectId ??
-        (q.subject ? await resolveSubject(q.subject, userId) : null);
-      //console.log("Subject Id", subjectId);
+      if (isFinalJson) {
+        // --- final.json flow ---
+        const boardId = await resolveBoard(q.Section_Name, userId);
+        const examId = await resolveExam(q.Name, boardId, userId);
+        const shiftId = await resolveShiftFromFinalJson(q, examId, userId);
 
-      const topicId =
-        hierarchyTopicId ??
-        (q.topic ? await resolveTopic(q.topic, subjectId, userId) : null);
-      //console.log("Topic Id", topicId);
+        const subjectId = q.subject
+          ? await resolveSubject(q.subject, userId)
+          : null;
+        const topicId =
+          q.topic && subjectId
+            ? await resolveTopic(q.topic, subjectId, userId)
+            : null;
 
-      const shiftId =
-        hierarchyShiftId ??
-        (hierarchyExamId
-          ? await resolveShiftFromQuestion(q, hierarchyExamId, userId)
-          : null);
-      console.log("Shift Id", shiftId);
+        const transformed = transformFinalJsonToQuestion(q);
 
-      //const availableLanguages = Array.isArray(q.content) ? q.content.map((c) => c?.language).filter(Boolean) : q.content?.language ? [q.content.language]: [];
+        docs.push({
+          ...transformed,
+          code: q.question_id || undefined,
+          exam: examId,
+          shift: shiftId,
+          subject: subjectId,
+          topic: topicId,
+          createdBy: userId,
+          isActive: true,
+        });
+      } else {
+        // --- Legacy flow ---
+        const subjectId =
+          hierarchySubjectId ??
+          (q.subject ? await resolveSubject(q.subject, userId) : null);
 
-      const availableLanguages =
-        q.content && typeof q.content === "object"
-          ? Object.keys(q.content)
-          : [];
+        const topicId =
+          hierarchyTopicId ??
+          (q.topic ? await resolveTopic(q.topic, subjectId, userId) : null);
 
-      //console.log("Available Language", JSON.stringify(availableLanguages, null, 2));
+        const shiftId = hierarchyShiftId;
 
-      docs.push({
-        ...q,
-        exam: hierarchyExamId,
-        shift: shiftId,
-        subject: subjectId,
-        topic: topicId,
-        availableLanguages,
-        createdBy: userId,
-        isActive: true,
-      });
+        const availableLanguages =
+          q.content && typeof q.content === "object"
+            ? Object.keys(q.content)
+            : [];
+
+        docs.push({
+          ...q,
+          exam: hierarchyExamId,
+          shift: shiftId,
+          subject: subjectId,
+          topic: topicId,
+          availableLanguages,
+          createdBy: userId,
+          isActive: true,
+        });
+      }
     }
-    // console.log("data before save: ", JSON.stringify(docs, null, 2));
-
-    //const saved = await Question.insertMany(docs, { ordered: false });
-
-    //console.log("saved",JSON.stringify(saved));
 
     let saved = [];
 
     try {
       saved = await Question.insertMany(docs, { ordered: false });
-
-      // saved = await Promise.all(
-      //   docs.map(async (doc) => {
-      //     const que = new Question(doc);
-      //     return await que.save();
-      //   })
-      // );
-
-      // rawResult mode
-      // saved = saved.insertedDocs || [];
     } catch (err) {
       console.error("InsertMany error (expected with duplicates)");
 
-      // 🔥 THIS IS THE KEY PART
       if (err.result?.insertedDocs) {
         saved = err.result.insertedDocs;
       } else if (err.writeErrors) {
         console.log("Duplicate errors:", err.writeErrors.length);
         saved = err.insertedDocs || [];
       } else {
-        throw err; // real failure
+        throw err;
       }
     }
 
-    console.log("saved", JSON.stringify(saved));
+    console.log("Saved count:", saved.length);
 
     if (collection?.title && saved.length) {
       const body = {
@@ -377,7 +445,6 @@ export async function POST(req) {
         await Collection.create({ ...body });
       } catch (err) {
         if (err.code === 11000) {
-          console.log("Collection with this title already exists.");
           const istStamp = () => {
             const d = new Date(Date.now());
             return (
@@ -391,9 +458,7 @@ export async function POST(req) {
           };
 
           body.title = `${collection.title}-${istStamp()}`;
-
           await Collection.create({ ...body });
-          console.log("Collection created with new title:", body.title);
         } else {
           console.error("Error creating collection:", err);
         }
@@ -403,8 +468,6 @@ export async function POST(req) {
     return NextResponse.json({
       success: true,
       count: saved.length,
-      noDuplicateSubjects: true,
-      noDuplicateTopics: true,
     });
   } catch (err) {
     console.error("IMPORT_ERROR", err);
