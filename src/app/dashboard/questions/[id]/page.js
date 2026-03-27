@@ -150,7 +150,7 @@ export default function ViewQuestionPage({ params: paramsPromise }) {
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground">Shift</span>
-                <span className="text-sm font-medium">{question.shift?.shiftName || "N/A"}</span>
+                <span className="text-sm font-medium">{question.shift?.shiftLabel || "N/A"}</span>
               </div>
               <div className="flex flex-col border-t pt-3">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground">Subject</span>

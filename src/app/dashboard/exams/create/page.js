@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Plus, Layout, Sun, Moon } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Layout } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,12 +29,11 @@ export default function CreateExamPage() {
     status: "DRAFT",
   });
 
-  // Shift form state
+  // Shift form state — only date + start/end time
   const [shiftForm, setShiftForm] = useState({
-    shiftName: "Morning",
     date: "",
     startTime: "09:00",
-    endTime: "",
+    endTime: "10:00",
   });
 
   useEffect(() => {
@@ -49,9 +48,34 @@ export default function CreateExamPage() {
     setForm({ ...form, examName: name, examSlug: slug });
   };
 
+  // Build shiftLabel from date + times: "DD/MM/YYYY | HH:MM AM – HH:MM AM"
+  const buildShiftLabel = () => {
+    if (!shiftForm.date) return null;
+
+    const [y, m, d] = shiftForm.date.split("-");
+    const dateStr = `${d}/${m}/${y}`;
+
+    const to12 = (t) => {
+      let [h, min] = t.split(":");
+      h = parseInt(h, 10);
+      const meridian = h >= 12 ? "PM" : "AM";
+      if (h > 12) h -= 12;
+      if (h === 0) h = 12;
+      return `${h}:${min} ${meridian}`;
+    };
+
+    const start12 = to12(shiftForm.startTime);
+    const end12 = shiftForm.endTime ? to12(shiftForm.endTime) : "";
+
+    return end12
+      ? `${dateStr} | ${start12} – ${end12}`
+      : `${dateStr} | ${start12}`;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!shiftForm.date) {
+    const shiftLabel = buildShiftLabel();
+    if (!shiftLabel) {
       alert("Please select a shift date.");
       return;
     }
@@ -78,10 +102,7 @@ export default function CreateExamPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         exam: newExam._id,
-        shiftName: shiftForm.shiftName,
-        date: shiftForm.date,
-        startTime: shiftForm.startTime,
-        endTime: shiftForm.endTime || undefined,
+        shiftLabel,
       }),
     });
 
@@ -121,7 +142,6 @@ export default function CreateExamPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Exam Name */}
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Exam Name</Label>
                 <Input 
@@ -132,20 +152,18 @@ export default function CreateExamPage() {
                   required 
                 />
               </div>
-              {/* Year */}
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Year</Label>
                 <Input 
                   type="number" 
                   value={form.examYear} 
-                  onChange={(e) => setForm({ ...form, examYear: parseInt(e.target.value) })}
+                  onChange={(e) => setForm({ ...form, examYear: e.target.value === "" ? "" : parseInt(e.target.value) })}
                   className="h-12 bg-white/5 border-white/10 rounded-xl"
                   required 
                 />
               </div>
             </div>
 
-            {/* Registry Slug */}
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Registry Slug</Label>
               <div className="p-3 rounded-xl bg-primary/5 border border-dashed border-primary/20 font-mono text-[11px] text-primary/80">
@@ -154,24 +172,22 @@ export default function CreateExamPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Duration */}
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Duration (Minutes)</Label>
                 <Input 
                   type="number" 
                   value={form.duration} 
-                  onChange={(e) => setForm({ ...form, duration: parseInt(e.target.value) })}
+                  onChange={(e) => setForm({ ...form, duration: e.target.value === "" ? "" : parseInt(e.target.value) })}
                   className="h-12 bg-white/5 border-white/10 rounded-xl"
                   required 
                 />
               </div>
-              {/* Total Marks */}
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Total Marks</Label>
                 <Input 
                   type="number" 
                   value={form.totalMarks} 
-                  onChange={(e) => setForm({ ...form, totalMarks: parseInt(e.target.value) })}
+                  onChange={(e) => setForm({ ...form, totalMarks: e.target.value === "" ? "" : parseInt(e.target.value) })}
                   className="h-12 bg-white/5 border-white/10 rounded-xl"
                   required 
                 />
@@ -181,34 +197,9 @@ export default function CreateExamPage() {
             {/* --- SHIFT SECTION --- */}
             <Separator className="my-2" />
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Sun className="h-4 w-4 text-amber-500" />
-                <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Shift Details</span>
-              </div>
+              <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Shift Details</span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Shift Name */}
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Shift</Label>
-                  <Select
-                    value={shiftForm.shiftName}
-                    onValueChange={(val) => setShiftForm({ ...shiftForm, shiftName: val })}
-                  >
-                    <SelectTrigger className="h-12 bg-white/5 border-white/10 rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Morning">
-                        <span className="flex items-center gap-2"><Sun className="h-3.5 w-3.5 text-amber-500" /> Morning</span>
-                      </SelectItem>
-                      <SelectItem value="Evening">
-                        <span className="flex items-center gap-2"><Moon className="h-3.5 w-3.5 text-indigo-400" /> Evening</span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Shift Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Shift Date</Label>
                   <Input
@@ -219,10 +210,6 @@ export default function CreateExamPage() {
                     required
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Start Time */}
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Start Time</Label>
                   <Input
@@ -233,10 +220,8 @@ export default function CreateExamPage() {
                     required
                   />
                 </div>
-
-                {/* End Time */}
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">End Time (Optional)</Label>
+                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">End Time</Label>
                   <Input
                     type="time"
                     value={shiftForm.endTime}
@@ -245,6 +230,13 @@ export default function CreateExamPage() {
                   />
                 </div>
               </div>
+
+              {/* Preview */}
+              {shiftForm.date && (
+                <div className="p-3 rounded-xl bg-primary/5 border border-dashed border-primary/20 font-mono text-[11px] text-primary/80">
+                  Shift: {buildShiftLabel()}
+                </div>
+              )}
             </div>
 
             <Button type="submit" className="w-full h-14 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-white text-black hover:bg-primary hover:text-white transition-all shadow-xl" disabled={loading}>

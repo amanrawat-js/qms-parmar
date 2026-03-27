@@ -69,8 +69,8 @@ export default function EditQuestionPage({ params: paramsPromise }) {
 
         // Fetch Exam/Subject Lists
         const [exRes, subRes] = await Promise.all([
-          fetch("/api/exams"),
-          fetch("/api/subjects"),
+          fetch("/api/exams?publishedOnly=true"),
+          fetch("/api/subjects?activeOnly=true"),
         ]);
         const exData = await exRes.json();
         const subData = await subRes.json();
@@ -93,23 +93,29 @@ export default function EditQuestionPage({ params: paramsPromise }) {
           return acc;
         }, {});
 
+        // Extract plain IDs from populated objects
+        const examId = qData.exam?._id || qData.exam || "";
+        const shiftId = qData.shift?._id || qData.shift || "";
+        const subjectId = qData.subject?._id || qData.subject || "";
+        const topicId = qData.topic?._id || qData.topic || "";
+
         // Trigger cascading fetches for Shift and Topic based on existing data
-        if (qData.exam) {
-          const sRes = await fetch(
-            `/api/shifts?examId=${qData.exam?._id || qData.exam}`
-          );
+        if (examId) {
+          const sRes = await fetch(`/api/shifts?examId=${examId}`);
           const sData = await sRes.json();
           setShifts(sData.shifts || []);
         }
-        if (qData.subject) {
-          const tRes = await fetch(
-            `/api/topics?subjectId=${qData.subject?._id || qData.exam}`
-          );
+        if (subjectId) {
+          const tRes = await fetch(`/api/topics?subjectId=${subjectId}&activeOnly=true`);
           const tData = await tRes.json();
           setTopics(tData.topics || []);
         }
         setFormData({
           ...qData,
+          exam: examId,
+          shift: shiftId,
+          subject: subjectId,
+          topic: topicId,
           content: { ...emptyBlocks, ...qData.content },
         });
       } catch (err) {
@@ -143,7 +149,7 @@ export default function EditQuestionPage({ params: paramsPromise }) {
     if (name === "subject") {
       setTopics([]);
       if (value) {
-        const res = await fetch(`/api/topics?subjectId=${value}`);
+        const res = await fetch(`/api/topics?subjectId=${value}&activeOnly=true`);
         const data = await res.json();
         setTopics(data.topics || []);
       }
@@ -247,11 +253,12 @@ export default function EditQuestionPage({ params: paramsPromise }) {
             </h2>
             <select
               name="exam"
-              value={formData.exam}
+              value={formData.exam || ""}
               onChange={handleRootChange}
               className="w-full p-2 border rounded-md text-sm bg-background"
               required
             >
+              <option value="">Select Exam</option>
               {exams.map((ex) => (
                 <option key={ex._id} value={ex._id}>
                   {ex.examName}
@@ -260,24 +267,26 @@ export default function EditQuestionPage({ params: paramsPromise }) {
             </select>
             <select
               name="shift"
-              value={formData.shift}
+              value={formData.shift || ""}
               onChange={handleRootChange}
               className="w-full p-2 border rounded-md text-sm bg-background"
               required
             >
+              <option value="">Select Shift</option>
               {shifts.map((sh) => (
                 <option key={sh._id} value={sh._id}>
-                  {sh.shiftName}
+                  {sh.shiftLabel}
                 </option>
               ))}
             </select>
             <select
               name="subject"
-              value={formData.subject}
+              value={formData.subject || ""}
               onChange={handleRootChange}
               className="w-full p-2 border rounded-md text-sm bg-background"
               required
             >
+              <option value="">Select Subject</option>
               {subjects.map((sub) => (
                 <option key={sub._id} value={sub._id}>
                   {sub.subjectName}
@@ -286,11 +295,12 @@ export default function EditQuestionPage({ params: paramsPromise }) {
             </select>
             <select
               name="topic"
-              value={formData.topic}
+              value={formData.topic || ""}
               onChange={handleRootChange}
               className="w-full p-2 border rounded-md text-sm bg-background"
               required
             >
+              <option value="">Select Topic</option>
               {topics.map((tp) => (
                 <option key={tp._id} value={tp._id}>
                   {tp.topicName}

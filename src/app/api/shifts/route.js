@@ -6,7 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
-// This tells Next.js to cache this route and revalidate every 60 seconds
+
 export const revalidate = 60;
 
 export async function GET(req) {
@@ -17,29 +17,25 @@ export async function GET(req) {
     const examId = searchParams.get("examId");
     const search = searchParams.get("search");
 
-    // Build the query object
-    const query = { };
+    const query = {};
 
     if (examId) {
-      // --- VALIDATION START ---
       if (!mongoose.Types.ObjectId.isValid(examId)) {
         return NextResponse.json(
           { message: "Invalid Exam ID." },
           { status: 400 }
         );
       }
-      // --- VALIDATION END ---
-
       query.exam = examId;
     }
 
     if (search) {
-      query.shiftName = { $regex: search, $options: "i" };
+      query.shiftLabel = { $regex: search, $options: "i" };
     }
 
     const shifts = await Shift.find(query)
       .populate("exam", "examName")
-      .sort({ date: -1 })
+      .sort({ createdAt: -1 })
       .lean();
 
     return NextResponse.json({ shifts }, { status: 200 });

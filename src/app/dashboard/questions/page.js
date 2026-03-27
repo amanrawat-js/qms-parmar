@@ -23,6 +23,7 @@ export default function QuestionsPage() {
   const [search, setSearch] = useState("");
   const [exams, setExams] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [shifts, setShifts] = useState([]);
   
   // Pagination State
   const [pagination, setPagination] = useState({
@@ -34,14 +35,15 @@ export default function QuestionsPage() {
 
   const [filters, setFilters] = useState({
     examId: "",
+    shiftId: "",
     subjectId: "",
     lang: "",
   });
 
   // Fetch exams and subjects for filter dropdowns
   useEffect(() => {
-    fetch("/api/exams").then(r => r.json()).then(d => setExams(d.exams || []));
-    fetch("/api/subjects").then(r => r.json()).then(d => setSubjects(d.subjects || []));
+    fetch("/api/exams?publishedOnly=true").then(r => r.json()).then(d => setExams(d.exams || []));
+    fetch("/api/subjects?activeOnly=true").then(r => r.json()).then(d => setSubjects(d.subjects || []));
   }, []);
 
   // Fetch Questions with Pagination
@@ -82,9 +84,24 @@ export default function QuestionsPage() {
   }, [fetchQuestions]);
 
   // Reset to page 1 when filters or search change
-  const handleFilterChange = (key, value) => {
+  const handleFilterChange = async (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setPagination(prev => ({ ...prev, page: 1 }));
+
+    // When exam changes, fetch shifts for that exam and reset shiftId
+    if (key === "examId") {
+      setShifts([]);
+      setFilters(prev => ({ ...prev, examId: value, shiftId: "" }));
+      if (value) {
+        try {
+          const res = await fetch(`/api/shifts?examId=${value}`);
+          const data = await res.json();
+          setShifts(data.shifts || []);
+        } catch (err) {
+          console.error("Failed to fetch shifts", err);
+        }
+      }
+    }
   };
 
   const handleSearchChange = (e) => {
@@ -118,7 +135,7 @@ export default function QuestionsPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-card p-4 rounded-xl border shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 bg-card p-4 rounded-xl border shadow-sm">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -150,6 +167,18 @@ export default function QuestionsPage() {
           <option value="">All Exams</option>
           {exams.map((ex) => (
             <option key={ex._id} value={ex._id}>{ex.examName}</option>
+          ))}
+        </select>
+
+        <select 
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={filters.shiftId}
+            onChange={(e) => handleFilterChange("shiftId", e.target.value)}
+            disabled={!filters.examId}
+        >
+          <option value="">All Shifts</option>
+          {shifts.map((sh) => (
+            <option key={sh._id} value={sh._id}>{sh.shiftLabel}</option>
           ))}
         </select>
 

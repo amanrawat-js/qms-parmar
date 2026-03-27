@@ -196,30 +196,27 @@ async function resolveTopic(topicInput, subjectId, userId) {
   });
 }
 
-// Shift (find-or-create by exam + date + startTime)
+// Shift (find-or-create by shiftLabel)
 async function resolveShift(shiftInput, examId, userId) {
   if (!shiftInput || !examId) return null;
   if (isObjectId(shiftInput)) return shiftInput;
 
-  const { shiftName, date, startTime, endTime } = shiftInput;
-  if (!shiftName || !date || !startTime) return null;
+  // Accept a shiftLabel string directly
+  const label = typeof shiftInput === "string" ? shiftInput : shiftInput.shiftLabel;
+  if (!label) return null;
 
-  const key = `shift:${examId}:${normalizeKey(shiftName)}:${date}`;
+  const key = `shift:${examId}:${normalizeKey(label)}`;
 
   return cached(key, async () => {
     let shift = await Shift.findOne({
       exam: examId,
-      shiftName: new RegExp(`^${escapeRegex(shiftName)}$`, "i"),
-      date,
+      shiftLabel: label,
     });
 
     if (!shift) {
       shift = await Shift.create({
         exam: examId,
-        shiftName: shiftName.trim(),
-        date,
-        startTime,
-        endTime: endTime || null,
+        shiftLabel: label,
         createdBy: userId,
       });
     }
@@ -228,38 +225,33 @@ async function resolveShift(shiftInput, examId, userId) {
   });
 }
 
-// Resolve shift from a final.json question entry
+// Resolve shift from a final.json question entry — combines Date + Time into shiftLabel
 async function resolveShiftFromFinalJson(question, examId, userId) {
   if (!examId || !question) return null;
 
-  const examDate = normalizeDate(question.Date);
-  const { startTime, endTime } = normalizeTimeMixed(question.Time);
+  const dateStr = question.Date; // e.g., "16/02/2026"
+  const timeStr = question.Time; // e.g., "9:00 AM - 10:00 AM"
 
-  if (!examDate || !startTime) return null;
+  if (!dateStr || !timeStr) return null;
 
-  // Determine Morning/Evening from start time
-  const startHour = parseInt(startTime.split(":")[0], 10);
-  const shiftName = startHour < 12 ? "Morning" : "Evening";
+  // Build shiftLabel: "16/02/2026 | 9:00 AM – 10:00 AM"
+  const shiftLabel = `${dateStr} | ${timeStr.replace(" - ", " – ")}`;
 
-  const key = `shift:${examId}:${examDate}:${startTime}`;
+  const key = `shift:${examId}:${normalizeKey(shiftLabel)}`;
 
   return cached(key, async () => {
     let shift = await Shift.findOne({
       exam: examId,
-      date: examDate,
-      startTime,
+      shiftLabel,
     });
 
-    if (shift) return shift._id;
-
-    shift = await Shift.create({
-      exam: examId,
-      shiftName,
-      date: examDate,
-      startTime,
-      endTime: endTime || null,
-      createdBy: userId,
-    });
+    if (!shift) {
+      shift = await Shift.create({
+        exam: examId,
+        shiftLabel,
+        createdBy: userId,
+      });
+    }
 
     return shift._id;
   });

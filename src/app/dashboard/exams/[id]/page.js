@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Clock, Target, Calendar, Edit, ShieldCheck, Loader2, Sun, Moon } from "lucide-react";
+import { ArrowLeft, Clock, Target, Calendar, Edit, ShieldCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -25,13 +25,6 @@ export default function ViewExamPage({ params }) {
   }, [id]);
 
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>;
-
-  const shiftIcon = (name) => {
-    const n = name?.toLowerCase() || "";
-    if (n.includes("morning")) return <Sun className="h-3.5 w-3.5 text-amber-400" />;
-    if (n.includes("evening") || n.includes("night")) return <Moon className="h-3.5 w-3.5 text-indigo-400" />;
-    return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
-  };
 
   return (
     <div className="relative min-h-[80vh] flex items-center p-6 w-full">
@@ -75,23 +68,20 @@ export default function ViewExamPage({ params }) {
             {/* Shift Column */}
             <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                <Sun className="h-3 w-3" /> Shift
+                <Calendar className="h-3 w-3" /> Shift
               </p>
               {shifts.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">No shifts assigned</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {shifts.map((shift) => (
-                    <div key={shift._id} className="flex flex-col">
-                      <div className="flex items-center gap-1.5 text-xl font-bold">
-                        {shiftIcon(shift.shiftName)}
-                        {shift.shiftName}
-                      </div>
-                      <span className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(shift.date).toLocaleDateString()} • {shift.startTime}
-                        {shift.endTime ? ` – ${shift.endTime}` : ""}
-                      </span>
-                    </div>
+                    <Badge
+                      key={shift._id}
+                      variant="secondary"
+                      className="text-xs font-semibold py-1 px-2"
+                    >
+                      {shift.shiftLabel}
+                    </Badge>
                   ))}
                 </div>
               )}

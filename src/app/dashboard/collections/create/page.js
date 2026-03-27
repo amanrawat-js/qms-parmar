@@ -39,8 +39,8 @@ export default function CreateCollectionPage() {
   useEffect(() => {
     const fetchBaseData = async () => {
       const [exRes, subRes] = await Promise.all([
-        fetch("/api/exams"),
-        fetch("/api/subjects")
+        fetch("/api/exams?publishedOnly=true"),
+        fetch("/api/subjects?activeOnly=true")
       ]);
       const exData = await exRes.json();
       const subData = await subRes.json();
@@ -58,7 +58,7 @@ export default function CreateCollectionPage() {
     if (name === "subject") {
       setTopics([]);
       if (value) {
-        const res = await fetch(`/api/topics?subjectId=${value}`);
+        const res = await fetch(`/api/topics?subjectId=${value}&activeOnly=true`);
         const data = await res.json();
         setTopics(data.topics || []);
       }

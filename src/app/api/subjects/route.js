@@ -7,9 +7,14 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export const revalidate = 60; // 1-minute cache
 
-export async function GET() {
+export async function GET(req) {
   await connectDB();
-  const subjects = await Subject.find({}).sort({ subjectName: 1 });
+  const { searchParams } = new URL(req.url);
+  const query = {};
+  if (searchParams.get("activeOnly") === "true") {
+    query.status = "ACTIVE";
+  }
+  const subjects = await Subject.find(query).sort({ subjectName: 1 });
   return NextResponse.json({ subjects });
 }
 

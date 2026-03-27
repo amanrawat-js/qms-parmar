@@ -7,21 +7,10 @@ const ShiftSchema = new mongoose.Schema(
       ref: "Exam",
       required: true,
     },
-    shiftName: {
-      type: String, 
-      required: true, // e.g., "Morning", "Evening"
+    shiftLabel: {
+      type: String,
+      required: true, // e.g., "3/11/2026 | 09:00 – 10:00"
       trim: true,
-    },
-    date: {
-      type: Date,
-      required: true,
-    },
-    startTime: {
-      type: String, // e.g., "09:00 AM"
-      required: true,
-    },
-    endTime: {
-      type: String, // Optional per your request
     },
     status: {
       type: String,

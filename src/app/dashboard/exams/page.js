@@ -13,8 +13,7 @@ import {
   Loader2, 
   ChevronRight,
   ChevronLeft,
-  Sun,
-  Moon,
+  Calendar,
 } from "lucide-react";
 
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -99,13 +98,6 @@ export default function ExamsPage() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-
-  const shiftIcon = (name) => {
-    const n = name?.toLowerCase() || "";
-    if (n.includes("morning")) return <Sun className="h-3 w-3 text-amber-500" />;
-    if (n.includes("evening") || n.includes("night")) return <Moon className="h-3 w-3 text-indigo-400" />;
-    return <Clock className="h-3 w-3 text-muted-foreground" />;
-  };
 
   return (
     <div className="p-0 space-y-6 animate-in fade-in duration-500">
@@ -207,10 +199,9 @@ export default function ExamsPage() {
                               <Badge
                                 key={shift._id}
                                 variant="secondary"
-                                className="text-[10px] gap-1 font-semibold"
+                                className="text-[10px] font-semibold"
                               >
-                                {shiftIcon(shift.shiftName)}
-                                {shift.shiftName}
+                                {shift.shiftLabel}
                               </Badge>
                             ))}
                           </div>

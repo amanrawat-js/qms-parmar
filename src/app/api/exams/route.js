@@ -8,9 +8,14 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export const revalidate = 60; // 1-minute cache
 
-export async function GET() {
+export async function GET(req) {
   await connectDB();
-  const exams = await Exam.find({}).populate("board", "boardShortName").sort({ createdAt: -1 });
+  const { searchParams } = new URL(req.url);
+  const query = {};
+  if (searchParams.get("publishedOnly") === "true") {
+    query.status = "PUBLISHED";
+  }
+  const exams = await Exam.find(query).populate("board", "boardShortName").sort({ createdAt: -1 });
   return NextResponse.json({ exams });
 }
 

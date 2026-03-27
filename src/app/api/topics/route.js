@@ -16,6 +16,9 @@ export async function GET(req) {
     const subjectId = searchParams.get("subjectId");
 
     const query = subjectId ? { subject: subjectId } : {};
+    if (searchParams.get("activeOnly") === "true") {
+      query.status = "ACTIVE";
+    }
     const topics = await Topic.find(query)
       .populate("subject", "_id subjectName status")
       .populate("parent", "_id topicName status") // Populate parent status

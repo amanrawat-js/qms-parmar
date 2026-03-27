@@ -29,7 +29,7 @@ export default function EditTopicPage({ params }) {
     const fetchData = async () => {
       const [tRes, sRes] = await Promise.all([
         fetch(`/api/topics/${id}`),
-        fetch("/api/subjects")
+        fetch("/api/subjects?activeOnly=true")
       ]);
       const tData = await tRes.json();
       const sData = await sRes.json();

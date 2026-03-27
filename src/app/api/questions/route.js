@@ -44,7 +44,7 @@ export async function GET(req) {
     const [questions, total] = await Promise.all([
       Question.find(query)
         .populate("exam", "examName")
-        .populate("shift", "shiftName")
+        .populate("shift", "shiftLabel")
         .populate("subject", "subjectName")
         .populate("topic", "topicName")
         .populate("createdBy", "name role")

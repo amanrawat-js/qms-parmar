@@ -40,7 +40,7 @@ export default function AddQuestionsPage({ params: paramsPromise }) {
     const init = async () => {
       const [colRes, subRes] = await Promise.all([
         fetch(`/api/collections/${params.id}`),
-        fetch("/api/subjects")
+        fetch("/api/subjects?activeOnly=true")
       ]);
       const colData = await colRes.json();
       const subData = await subRes.json();
@@ -55,7 +55,7 @@ export default function AddQuestionsPage({ params: paramsPromise }) {
   const handleSubjectChange = async (val) => {
     setFilters({ ...filters, subject: val, topic: "" });
     if (val) {
-      const res = await fetch(`/api/topics?subjectId=${val}`);
+      const res = await fetch(`/api/topics?subjectId=${val}&activeOnly=true`);
       const data = await res.json();
       setTopics(data.topics || []);
     } else {

@@ -41,8 +41,8 @@ export default function EditCollectionPage({ params: paramsPromise }) {
       try {
         const [colRes, exRes, subRes] = await Promise.all([
           fetch(`/api/collections/${params.id}`),
-          fetch("/api/exams"),
-          fetch("/api/subjects")
+          fetch("/api/exams?publishedOnly=true"),
+          fetch("/api/subjects?activeOnly=true")
         ]);
 
         const collection = await colRes.json();
@@ -70,7 +70,7 @@ export default function EditCollectionPage({ params: paramsPromise }) {
         // Fetch topics if a subject was already selected
         const subjectId = collection.subject?._id || collection.subject;
         if (subjectId) {
-          const tRes = await fetch(`/api/topics?subjectId=${subjectId}`);
+          const tRes = await fetch(`/api/topics?subjectId=${subjectId}&activeOnly=true`);
           const tData = await tRes.json();
           setTopics(tData.topics || []);
         }
@@ -93,7 +93,7 @@ export default function EditCollectionPage({ params: paramsPromise }) {
       setTopics([]);
       setFormData(prev => ({ ...prev, topic: "" }));
       if (value) {
-        const res = await fetch(`/api/topics?subjectId=${value}`);
+        const res = await fetch(`/api/topics?subjectId=${value}&activeOnly=true`);
         const data = await res.json();
         setTopics(data.topics || []);
       }

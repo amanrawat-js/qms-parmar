@@ -19,7 +19,7 @@ export async function GET(req, { params }) {
 
     const question = await Question.findById(id)
       .populate("exam", "examName")
-      .populate("shift", "shiftName")
+      .populate("shift", "shiftLabel")
       .populate("subject", "subjectName")
       .populate("topic", "topicName")
       .populate("createdBy", "name")

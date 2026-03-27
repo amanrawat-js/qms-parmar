@@ -26,7 +26,7 @@ export default function CreateTopicPage() {
 
   // 1. Fetch all subjects on mount
   useEffect(() => {
-    fetch("/api/subjects")
+    fetch("/api/subjects?activeOnly=true")
       .then(res => res.json())
       .then(data => setSubjects(data.subjects || []))
       .catch(err => console.error("Error fetching subjects:", err));

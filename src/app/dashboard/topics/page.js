@@ -75,8 +75,7 @@ export default function TopicsPage() {
         topic.topicCode?.toLowerCase().includes(searchLower) ||
         topic.subject?.subjectName?.toLowerCase().includes(searchLower);
       
-      const matchesStatus = statusFilter === "ALL" || 
-                            (statusFilter === "ACTIVE" ? topic.isActive : !topic.isActive);
+      const matchesStatus = statusFilter === "ALL" || topic.status === statusFilter;
       
       return matchesSearch && matchesStatus;
     });
@@ -189,9 +188,9 @@ export default function TopicsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge className={`text-[10px] uppercase font-bold ${
-                        topic.isActive ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'
+                        topic.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'
                       }`}>
-                        {topic.isActive ? 'Active' : 'Inactive'}
+                        {topic.status || 'INACTIVE'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">

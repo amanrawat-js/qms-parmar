@@ -23,7 +23,7 @@ export default function CreateShiftPage() {
   });
 
   useEffect(() => {
-    fetch("/api/exams").then(res => res.json()).then(data => setExams(data.exams || []));
+    fetch("/api/exams?publishedOnly=true").then(res => res.json()).then(data => setExams(data.exams || []));
   }, []);
 
 // 2. DERIVED STATE (No useEffect needed)

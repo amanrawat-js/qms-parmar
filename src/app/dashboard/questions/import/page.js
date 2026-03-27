@@ -60,7 +60,7 @@ export default function ImportQuestionsPage() {
   });
 
   useEffect(() => {
-    fetch("/api/exams")
+    fetch("/api/exams?publishedOnly=true")
       .then((res) => res.json())
       .then((data) => setExams(data.exams || []));
   }, []);

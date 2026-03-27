@@ -71,8 +71,7 @@ export default function SubjectsPage() {
     return subjects.filter((subject) => {
       const matchesSearch = subject.subjectName?.toLowerCase().includes(search.toLowerCase()) ||
                             subject.subjectCode?.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "ALL" || 
-                            (statusFilter === "ACTIVE" ? subject.isActive : !subject.isActive);
+      const matchesStatus = statusFilter === "ALL" || subject.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [subjects, search, statusFilter]);
@@ -184,9 +183,9 @@ export default function SubjectsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge className={`text-[10px] uppercase font-bold ${
-                        subject.isActive ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'
+                        subject.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'
                       }`}>
-                        {subject.isActive ? 'Active' : 'Inactive'}
+                        {subject.status || 'INACTIVE'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
