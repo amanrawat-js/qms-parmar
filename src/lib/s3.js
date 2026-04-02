@@ -7,13 +7,14 @@ import crypto from "crypto";
 
 const s3Client = new S3Client({
   region: process.env.AWS_S3_REGION || "ap-south-1",
+  endpoint: process.env.VULTR_ENDPOINT,
   credentials: {
     accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY,
   },
 });
 
-const BUCKET = process.env.AWS_S3_BUCKET || "qms-question-images";
+const BUCKET = process.env.AWS_S3_BUCKET || "qms-images";
 
 /* -------------------------------------------------
    Upload a base64 image to S3
@@ -29,18 +30,19 @@ const BUCKET = process.env.AWS_S3_BUCKET || "qms-question-images";
  */
 export async function uploadBase64ImageToS3(base64Data, mimeType, key) {
   const buffer = Buffer.from(base64Data, "base64");
-
+  // prepend folder name
+  const finalKey = `qms-parmar-academy/${key}`;
   const command = new PutObjectCommand({
     Bucket: BUCKET,
-    Key: key,
+    Key: finalKey,
     Body: buffer,
     ContentType: mimeType,
   });
 
   await s3Client.send(command);
 
-  // Return the public URL (standard S3 virtual-hosted-style URL)
-  return `https://${BUCKET}.s3.${process.env.AWS_S3_REGION || "ap-south-1"}.amazonaws.com/${key}`;
+  // return public URL
+  return `https://${BUCKET}.del1.vultrobjects.com/${finalKey}`;
 }
 
 /* -------------------------------------------------

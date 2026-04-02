@@ -41,7 +41,7 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col justify-center items-center h-[70vh] gap-4">
         <div className="relative">
-          <div className="h-16 w-16 rounded-full border-4 border-primary/20 animate-spin border-t-primary" />
+          <div className="h-14 w-14 rounded-full border-4 border-primary/20 animate-spin border-t-primary" />
         </div>
         <p className="text-muted-foreground text-sm font-medium animate-pulse">Loading Dashboard...</p>
       </div>
@@ -147,12 +147,12 @@ export default function DashboardPage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href="/dashboard/questions/import">
-              <Button variant="outline" className="gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
-                <Plus className="h-4 w-4" /> Import Questions
+              <Button variant="outline" className="cursor-pointer gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
+                 Import Questions
               </Button>
             </Link>
             <Link href="/dashboard/questions/create">
-              <Button className="gap-2 bg-white text-slate-900 hover:bg-white/90 shadow-lg shadow-white/10">
+              <Button className="cursor-pointer gap-2 bg-white text-slate-900 hover:bg-white/90 shadow-lg shadow-white/10">
                 <Plus className="h-4 w-4" /> Add Question
               </Button>
             </Link>

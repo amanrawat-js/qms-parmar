@@ -6,6 +6,7 @@ import { authOptions } from "../api/auth/[...nextauth]/route";
 import { ROLE_PERMISSIONS } from "@/enums/role";
 import RouteGuard from "@/components/dashboard/RouteGuard";
 import { ShieldAlert } from "lucide-react";
+import { Toaster } from "@/components/ui/sonner";
 
 
 const adminMenu = [
@@ -63,6 +64,7 @@ export default async function AdminLayout({ children }) {
             </RouteGuard>
           )}
         </main>
+        <Toaster />
       </SidebarInset>
     </SidebarProvider>
   );
