@@ -76,8 +76,7 @@ export async function PUT(req, { params }) {
 }
 
 /**
- * DELETE: Soft delete by setting isActive to false 
- * (Standard for audit trails)
+ * DELETE: Permanently remove a question from the database.
  */
 export async function DELETE(req, { params }) {
   const { session, denied } = await requireRole(req, "DELETE", "/api/questions");
@@ -87,18 +86,15 @@ export async function DELETE(req, { params }) {
     const { id } = await params;
     await connectDB();
 
-    const deletedQuestion = await Question.findByIdAndUpdate(
-      id,
-      { isActive: false, updatedBy: session.user.id },
-      { new: true }
-    );
+    const deletedQuestion = await Question.findByIdAndDelete(id);
 
     if (!deletedQuestion) {
       return NextResponse.json({ message: "Question not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ message: "Question archived successfully" });
+    return NextResponse.json({ message: "Question deleted successfully" });
   } catch (error) {
+    console.error("DELETE_QUESTION_ERROR", error);
     return NextResponse.json({ message: "Delete failed" }, { status: 500 });
   }
 }

@@ -106,4 +106,6 @@ export const API_ACCESS = [
   { path: '/api/writer-permissions',   method: 'ALL', roles: [...ADMIN_ROLES, 'REVIEWER', 'CONTENT_WRITER'] },
   // Dashboard stats — role-aware response already in route
   { path: '/api/dashboard',           method: 'ALL',  roles: [...ADMIN_ROLES, 'REVIEWER', 'CONTENT_WRITER'] },
+  // File upload — CKEditor image uploads to Vultr
+  { path: '/api/upload',              method: 'POST', roles: [...ADMIN_ROLES, 'CONTENT_WRITER'] },
 ];

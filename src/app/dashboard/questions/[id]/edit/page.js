@@ -240,7 +240,7 @@ export default function EditQuestionPage({ params: paramsPromise }) {
             </Badge>
           </div>
         </div>
-        <Button type="submit" disabled={loading} className="px-10">
+        <Button type="submit" disabled={loading} className="cursor-pointer px-10">
           <Save className="mr-2 h-4 w-4" />{" "}
           {loading ? "Updating..." : "Update Question"}
         </Button>
@@ -285,7 +285,6 @@ export default function EditQuestionPage({ params: paramsPromise }) {
               value={formData.subject || ""}
               onChange={handleRootChange}
               className="w-full p-2 border rounded-md text-sm bg-background"
-              required
             >
               <option value="">Select Subject</option>
               {subjects.map((sub) => (
@@ -299,7 +298,6 @@ export default function EditQuestionPage({ params: paramsPromise }) {
               value={formData.topic || ""}
               onChange={handleRootChange}
               className="w-full p-2 border rounded-md text-sm bg-background"
-              required
             >
               <option value="">Select Topic</option>
               {topics.map((tp) => (

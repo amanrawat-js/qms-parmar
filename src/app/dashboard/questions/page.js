@@ -16,10 +16,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LANGUAGE_OPTIONS } from "@/enums/language";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export default function QuestionsPage() {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { _id, code } of question pending deletion
+  const [deleting, setDeleting] = useState(false);
   const [search, setSearch] = useState("");
   const [boards, setBoards] = useState([]);
   const [exams, setExams] = useState([]);
@@ -126,6 +139,29 @@ export default function QuestionsPage() {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/questions/${deleteTarget._id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Question deleted successfully");
+        // Remove from local list immediately for instant feedback
+        setQuestions(prev => prev.filter(q => q._id !== deleteTarget._id));
+        setPagination(prev => ({ ...prev, total: Math.max(0, prev.total - 1) }));
+      } else {
+        const data = await res.json();
+        toast.error(data.message || "Failed to delete question");
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+      toast.error("An error occurred while deleting");
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-10">
       {/* Header */}
@@ -164,7 +200,7 @@ export default function QuestionsPage() {
         </div>
 
         <select
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="cursor-pointer flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           value={filters.boardId}
           onChange={(e) => handleFilterChange("boardId", e.target.value)}
         >
@@ -175,7 +211,7 @@ export default function QuestionsPage() {
         </select>
 
         <select 
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="cursor-pointer flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={filters.examId}
             onChange={(e) => handleFilterChange("examId", e.target.value)}
         >
@@ -186,7 +222,7 @@ export default function QuestionsPage() {
         </select>
 
         <select 
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="cursor-pointer flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={filters.shiftId}
             onChange={(e) => handleFilterChange("shiftId", e.target.value)}
             disabled={!filters.examId}
@@ -198,7 +234,7 @@ export default function QuestionsPage() {
         </select>
 
         <select 
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="cursor-pointer flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={filters.subjectId}
             onChange={(e) => handleFilterChange("subjectId", e.target.value)}
         >
@@ -209,7 +245,7 @@ export default function QuestionsPage() {
         </select>
 
         <select
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="cursor-pointer flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           value={filters.lang}
           onChange={(e) => handleFilterChange("lang", e.target.value)}
         >
@@ -273,8 +309,20 @@ export default function QuestionsPage() {
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
-                          <Link href={`/dashboard/questions/${q._id}`}><Button variant="ghost" size="icon" className="h-8 w-8"><Edit className="h-4 w-4" /></Button></Link>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500"><Trash2 className="h-4 w-4" /></Button>
+                        <Link href={`/dashboard/questions/${q._id}`}>
+                          <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8" title="View / Edit">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="cursor-pointer h-8 w-8 text-rose-500 hover:bg-rose-500/10"
+                          title="Delete question"
+                          onClick={() => setDeleteTarget(q)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -334,6 +382,38 @@ export default function QuestionsPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Delete Confirmation Dialog ── */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-rose-500" />
+              Delete Question?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>This action <strong>cannot be undone</strong>. The question will be permanently removed from the database.</p>
+                {deleteTarget?.code && (
+                  <p className="font-mono text-xs bg-muted px-2 py-1 rounded">
+                    Code: {deleteTarget.code}
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer" disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="cursor-pointer bg-rose-600 hover:bg-rose-700 text-white focus:ring-rose-600"
+            >
+              {deleting ? "Deleting..." : "Yes, Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

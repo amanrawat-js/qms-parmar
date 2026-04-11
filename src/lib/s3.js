@@ -327,7 +327,27 @@ async function deleteImageFromS3(url) {
 }
 
 /* -------------------------------------------------
+   Direct file upload (for CKEditor inline uploads)
+------------------------------------------------- */
+
+async function uploadFileToS3(buffer, mimeType, originalName = "") {
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+    throw new Error("Invalid file buffer");
+  }
+  if (buffer.length > MAX_IMAGE_SIZE) {
+    throw new Error(`File exceeds ${MAX_IMAGE_SIZE / (1024 * 1024)} MB limit`);
+  }
+  if (!ALLOWED_MIME_TYPES.has(mimeType.toLowerCase())) {
+    throw new Error(`Unsupported file type: ${mimeType}`);
+  }
+
+  const ext = extFromMime(mimeType);
+  const key = buildKey("editor-uploads/", ext);
+  return uploadBuffer(buffer, mimeType, key);
+}
+
+/* -------------------------------------------------
    Exports
 ------------------------------------------------- */
 
-export { processContentImages, processHtml, deleteImageFromS3 };
+export { processContentImages, processHtml, deleteImageFromS3, uploadFileToS3 };

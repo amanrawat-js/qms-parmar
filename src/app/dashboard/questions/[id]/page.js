@@ -49,7 +49,7 @@ export default function ViewQuestionPage({ params: paramsPromise }) {
           </div>
         </div>
         <Link href={`/dashboard/questions/${params.id}/edit`}>
-          <Button className="gap-2">
+          <Button className="cursor-pointer gap-2">
             <Edit className="h-4 w-4" /> Edit Question
           </Button>
         </Link>
