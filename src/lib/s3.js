@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import crypto from "crypto";
 
 /* -------------------------------------------------
@@ -347,7 +348,34 @@ async function uploadFileToS3(buffer, mimeType, originalName = "") {
 }
 
 /* -------------------------------------------------
+   Generate a presigned PUT URL for direct browser upload
+   Returns { uploadUrl, publicUrl, key }
+------------------------------------------------- */
+
+async function getPresignedUploadUrl(fileName, contentType) {
+  if (!contentType || !ALLOWED_MIME_TYPES.has(contentType.toLowerCase())) {
+    throw new Error(`Unsupported file type: ${contentType}`);
+  }
+
+  const ext = extFromMime(contentType);
+  const key = buildKey("editor-uploads/", ext);
+
+  const command = new PutObjectCommand({
+    Bucket: BUCKET,
+    Key: key,
+    ContentType: contentType,
+    ACL: "public-read",
+    CacheControl: "public, max-age=31536000, immutable",
+  });
+
+  const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 }); // 5 min
+  const publicUrl = `${PUBLIC_URL_BASE}/${key}`;
+
+  return { uploadUrl, publicUrl, key };
+}
+
+/* -------------------------------------------------
    Exports
 ------------------------------------------------- */
 
-export { processContentImages, processHtml, deleteImageFromS3, uploadFileToS3 };
+export { processContentImages, processHtml, deleteImageFromS3, uploadFileToS3, getPresignedUploadUrl };

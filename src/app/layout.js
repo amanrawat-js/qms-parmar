@@ -8,11 +8,6 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* CKEditor CSS */}
-        <link
-          rel="stylesheet"
-          href="https://cdn.ckeditor.com/4.23.0-lts/standard/ckeditor.css"
-        />
         
       </head>
       <body>

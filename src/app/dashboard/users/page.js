@@ -111,7 +111,7 @@ export default function UsersPage() {
         </div>
         
           <Link href="/dashboard/users/create">
-            <Button className="shadow-lg transition-transform active:scale-95">
+            <Button className="cursor-pointer shadow-lg transition-transform active:scale-95">
               <UserPlus className="mr-2 h-4 w-4" /> Add User
             </Button>
           </Link>
@@ -203,14 +203,14 @@ export default function UsersPage() {
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                            <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8 rounded-full">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => window.location.href = `/dashboard/users/${user._id}`}>
-                              <Eye className="mr-2 h-4 w-4" /> View Detail
+                              <Eye className="cursor-pointer mr-2 h-4 w-4" /> View Detail
                             </DropdownMenuItem>
                            
                               <DropdownMenuItem onClick={() => window.location.href = `/dashboard/users/${user._id}/edit`}>

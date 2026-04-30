@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 
 const CKEditorComponent = dynamic(
-  () => import("@/components/CKEditor4").then((mod) => mod.default),
+  () => import("@/components/CKEditor5").then((mod) => mod.default),
   { ssr: false }
 );
 
@@ -20,7 +20,7 @@ export default function HomePage() {
     <>
       <Card>
         <CardHeader>
-          <h2 className="text-2xl font-bold">CKEditor 4 with MathJax</h2>
+          <h2 className="text-2xl font-bold">CKEditor 5 with MathJax</h2>
         </CardHeader>
         <CardContent>
           <MathJaxScript />

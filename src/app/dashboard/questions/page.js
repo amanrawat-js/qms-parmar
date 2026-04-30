@@ -39,7 +39,7 @@ export default function QuestionsPage() {
   const [allExams, setAllExams] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [shifts, setShifts] = useState([]);
-  
+
   // Pagination State
   const [pagination, setPagination] = useState({
     total: 0,
@@ -79,7 +79,7 @@ export default function QuestionsPage() {
       });
       const res = await fetch(`/api/questions?${params}`);
       const data = await res.json();
-      
+
       setQuestions(data.questions || []);
       // Update pagination meta from server response
       if (data.pagination) {
@@ -210,10 +210,10 @@ export default function QuestionsPage() {
           ))}
         </select>
 
-        <select 
-            className="cursor-pointer flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={filters.examId}
-            onChange={(e) => handleFilterChange("examId", e.target.value)}
+        <select
+          className="cursor-pointer flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          value={filters.examId}
+          onChange={(e) => handleFilterChange("examId", e.target.value)}
         >
           <option value="">All Exams</option>
           {exams.map((ex) => (
@@ -221,11 +221,11 @@ export default function QuestionsPage() {
           ))}
         </select>
 
-        <select 
-            className="cursor-pointer flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={filters.shiftId}
-            onChange={(e) => handleFilterChange("shiftId", e.target.value)}
-            disabled={!filters.examId}
+        <select
+          className="cursor-pointer flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          value={filters.shiftId}
+          onChange={(e) => handleFilterChange("shiftId", e.target.value)}
+          disabled={!filters.examId}
         >
           <option value="">All Shifts</option>
           {shifts.map((sh) => (
@@ -233,10 +233,10 @@ export default function QuestionsPage() {
           ))}
         </select>
 
-        <select 
-            className="cursor-pointer flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={filters.subjectId}
-            onChange={(e) => handleFilterChange("subjectId", e.target.value)}
+        <select
+          className="cursor-pointer flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          value={filters.subjectId}
+          onChange={(e) => handleFilterChange("subjectId", e.target.value)}
         >
           <option value="">All Subjects</option>
           {subjects.map((s) => (
@@ -299,12 +299,12 @@ export default function QuestionsPage() {
                     </td>
                     <td className="p-4">
                       {q.availableLanguages?.map(l => (
-                          <Badge key={l} variant="secondary" className="mr-1 uppercase text-[9px]">{l}</Badge>
+                        <Badge key={l} variant="secondary" className="mr-1 uppercase text-[9px]">{l}</Badge>
                       ))}
                     </td>
                     <td className="p-4">
                       <Badge className={q.isActive ? "bg-emerald-500/10 text-emerald-600 shadow-none" : "bg-rose-500/10 text-rose-600 shadow-none"}>
-                          {q.isActive ? "Active" : "Draft"}
+                        {q.isActive ? "Active" : "Draft"}
                       </Badge>
                     </td>
                     <td className="p-4 text-right">
@@ -348,26 +348,26 @@ export default function QuestionsPage() {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            
+
             <div className="flex items-center gap-1">
-                {[...Array(pagination.pages)].map((_, i) => {
-                    const pageNum = i + 1;
-                    // Only show first, last, and pages around current
-                    if (pageNum === 1 || pageNum === pagination.pages || (pageNum >= pagination.page - 1 && pageNum <= pagination.page + 1)) {
-                        return (
-                            <Button
-                                key={pageNum}
-                                variant={pagination.page === pageNum ? "default" : "outline"}
-                                size="sm"
-                                className="h-8 w-8 text-xs"
-                                onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
-                            >
-                                {pageNum}
-                            </Button>
-                        );
-                    }
-                    return null;
-                })}
+              {[...Array(pagination.pages)].map((_, i) => {
+                const pageNum = i + 1;
+                // Only show first, last, and pages around current
+                if (pageNum === 1 || pageNum === pagination.pages || (pageNum >= pagination.page - 1 && pageNum <= pagination.page + 1)) {
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={pagination.page === pageNum ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 w-8 text-xs"
+                      onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                }
+                return null;
+              })}
             </div>
 
             <Button

@@ -52,9 +52,7 @@ export default function CollectionSummaryPage({ params: paramsPromise }) {
           <Button className="gap-2"><Plus className="h-4 w-4" /> Add/Manage Questions</Button>
         </Link>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
         <div className="bg-muted/30 p-6 rounded-xl border h-fit space-y-4">
           <h3 className="font-bold border-b pb-2">Stats</h3>
           <div className="flex justify-between text-sm"><span>Total Questions:</span><b>{questions.length}</b></div>
@@ -77,7 +75,7 @@ export default function CollectionSummaryPage({ params: paramsPromise }) {
                     <p className="text-[10px] text-primary uppercase font-bold truncate">{q.code}</p>
                   </div>
                 </div>
-                <Link href={`/dashboard/questions/${q._id}/view`}>
+                <Link href={`/dashboard/questions/${q._id}/edit`}>
                   <ExternalLink className="h-4 w-4 text-muted-foreground" />
                 </Link>
               </div>

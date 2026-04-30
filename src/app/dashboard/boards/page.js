@@ -195,7 +195,7 @@ export default function BoardsPage() {
                     <TableCell className="text-right pr-8">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                          <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8 rounded-full">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

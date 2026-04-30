@@ -20,7 +20,7 @@ export default function CKEditorReadOnly({ content, className = "" }) {
   return (
     <div
       ref={containerRef}
-      className={`cke_content ${className}`}
+      className={`ck-content ${className}`}
       style={{ lineHeight: 1.6 }}
     />
   );

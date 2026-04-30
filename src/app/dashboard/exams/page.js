@@ -218,14 +218,14 @@ export default function ExamsPage() {
                       <TableCell className="text-right pr-8">
                         <div className="flex justify-end gap-2">
                           <Link href={`/dashboard/exams/${exam._id}`}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><Eye className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8 rounded-full"><Eye className="h-4 w-4" /></Button>
                           </Link>
                           <Link href={`/dashboard/exams/${exam._id}/edit`}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><Edit className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8 rounded-full"><Edit className="h-4 w-4" /></Button>
                           </Link>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                              <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8 rounded-full">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>

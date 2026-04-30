@@ -16,7 +16,7 @@ import dynamic from "next/dynamic";
 
 
 const CKEditorComponent = dynamic(
-  () => import("@/components/CKEditor4").then((mod) => mod.default),
+  () => import("@/components/CKEditor5").then((mod) => mod.default),
   {
     ssr: false,
     loading: () => (

@@ -1,23 +1,53 @@
 import { NextResponse } from "next/server";
-import { uploadFileToS3 } from "@/lib/s3";
+import { getPresignedUploadUrl, uploadFileToS3 } from "@/lib/s3";
 import { requireRole } from "@/lib/auth-guard";
 
 /**
  * POST /api/upload
  *
- * Accepts multipart/form-data with a file field named "upload" (CKEditor 4 convention).
- * Uploads the file to Vultr Object Storage and returns the public URL.
+ * Two modes of operation:
  *
- * Response format follows CKEditor 4's uploadimage plugin contract:
- *   { uploaded: 1, fileName: "...", url: "https://..." }
+ * MODE 1 — Presigned URL (preferred, used by the CKEditor5 component)
+ *   Request:  Content-Type: application/json
+ *             Body: { "fileName": "photo.jpg", "contentType": "image/jpeg" }
+ *   Response: { "uploadUrl": "https://...signed...", "publicUrl": "https://...public..." }
+ *   The client then PUTs the file directly to `uploadUrl`.
+ *
+ * MODE 2 — Legacy multipart upload (fallback, kept for backward compatibility)
+ *   Request:  Content-Type: multipart/form-data  (field name: "upload")
+ *   Response: CKEditor 5 custom upload adapter contract:
+ *             { "uploaded": 1, "fileName": "...", "url": "https://..." }
  */
 export async function POST(req) {
   const { session, denied } = await requireRole(req, "POST", "/api/upload");
   if (denied) return denied;
 
   try {
+    const contentType = req.headers.get("content-type") || "";
+
+    // ─── MODE 1: Presigned URL request (JSON body) ───
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      const { fileName, contentType: fileType } = body;
+
+      if (!fileName || !fileType) {
+        return NextResponse.json(
+          { error: "fileName and contentType are required" },
+          { status: 400 }
+        );
+      }
+
+      const result = await getPresignedUploadUrl(fileName, fileType);
+
+      return NextResponse.json({
+        uploadUrl: result.uploadUrl,
+        publicUrl: result.publicUrl,
+      });
+    }
+
+    // ─── MODE 2: Legacy multipart form upload ───
     const formData = await req.formData();
-    const file = formData.get("upload"); // CKEditor 4 sends the file with field name "upload"
+    const file = formData.get("upload"); // CKEditor upload convention
 
     if (!file || typeof file === "string") {
       return NextResponse.json(
@@ -32,7 +62,7 @@ export async function POST(req) {
 
     const url = await uploadFileToS3(buffer, mimeType, originalName);
 
-    // CKEditor 4 uploadimage plugin expects this exact response shape
+    // CKEditor 5 custom upload adapter expects this response shape
     return NextResponse.json({
       uploaded: 1,
       fileName: originalName,
@@ -50,3 +80,12 @@ export async function POST(req) {
     );
   }
 }
+
+/**
+ * Increase Next.js body size limit for the legacy multipart fallback.
+ * Presigned URL mode sends only a tiny JSON body, so this only matters
+ * for the multipart path.
+ *
+ * NOTE: Body size for App Router routes is configured via
+ * `experimental.serverBodySizeLimit` in next.config.mjs — not here.
+ */
